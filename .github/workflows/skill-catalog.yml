@@ -1,0 +1,54 @@
+name: スキル一覧を更新
+
+on:
+  push:
+    paths:
+      - "catalog/**"
+      - ".claude/skills/**"
+      - "scripts/**"
+      - ".github/workflows/skill-catalog.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: skill-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 一覧を作り直す
+        run: python3 scripts/build_catalog.py
+      - name: 変更があればコミット
+        run: |
+          if [ -n "$(git status --porcelain docs SKILLS.md)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs SKILLS.md
+            git commit -m "スキル一覧を自動更新"
+            git push
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref_name == github.event.repository.default_branch
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

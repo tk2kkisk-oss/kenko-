@@ -1,0 +1,262 @@
+<title>Claude スキル帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: sticky search bar over a single column of skill cards, grouped by category; filters wrap as chips. */
+:root {
+  --bg: #f3f6f6;
+  --surface: #ffffff;
+  --ink: #18323a;
+  --muted: #5b7279;
+  --line: #d6e1e2;
+  --accent: #1f7a83;
+  --accent-soft: #e0f0f0;
+  --warn: #9a5b00;
+  --warn-soft: #fff1d6;
+  --mark: #fff3a8;
+  --f-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --f-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* category hues */
+  --c1: #c2554a; --c2: #3a6ea5; --c3: #9a4f9c; --c4: #2f8a5a;
+  --c5: #b07a12; --c6: #c06a2b; --c7: #4f6470; --c8: #5a5fb0; --c9: #8a8f93;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1a1d; --surface: #16252a; --ink: #e4eeee; --muted: #9db2b6; --line: #284047;
+    --accent: #5cc3c9; --accent-soft: #173a3e; --warn: #f0b85a; --warn-soft: #3a2c12; --mark: #5b5420;
+    --c1: #e3877d; --c2: #7fa9d8; --c3: #c78bc9; --c4: #6cc093; --c5: #d9ad52; --c6: #e3995f; --c7: #9fb3bd; --c8: #9a9de0; --c9: #a9aeb2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --surface: #16252a; --ink: #e4eeee; --muted: #9db2b6; --line: #284047;
+  --accent: #5cc3c9; --accent-soft: #173a3e; --warn: #f0b85a; --warn-soft: #3a2c12; --mark: #5b5420;
+  --c1: #e3877d; --c2: #7fa9d8; --c3: #c78bc9; --c4: #6cc093; --c5: #d9ad52; --c6: #e3995f; --c7: #9fb3bd; --c8: #9a9de0; --c9: #a9aeb2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; margin: 0; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; }
+header.top h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.9rem; line-height: 1.3; margin: 0; text-wrap: balance; }
+header.top p { color: var(--muted); margin: 6px 0 0; max-width: 60ch; }
+.searchbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 14px 4px; margin-top: 16px; }
+.field { position: relative; }
+.field svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); }
+#q { width: 100%; font: inherit; font-size: 1rem; padding: 12px 40px 12px 42px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+#q:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.filters { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; font-size: .85rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font: inherit; font-size: .84rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 3px 11px; border-radius: 999px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip .n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .78rem; }
+.chip.zero { opacity: .45; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: .7; }
+.chip.hint { border-style: dashed; }
+.chip:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat); flex: none; }
+.status { color: var(--muted); font-size: .88rem; margin: 14px 0 0; font-variant-numeric: tabular-nums; }
+section.group { margin-top: 26px; }
+section.group > h2 { font-family: var(--f-display); font-size: 1.15rem; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+section.group > h2 .dot { width: 10px; height: 10px; }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--cat); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.card h3 { font-family: var(--f-display); font-size: 1.08rem; margin: 0; line-height: 1.4; }
+.cmd { font-family: var(--f-mono); font-size: .82rem; color: var(--accent); background: var(--accent-soft); border: 0; padding: 1px 8px; border-radius: 6px; cursor: pointer; }
+.cmd[data-copied]::after { content: " コピーしました"; font-family: var(--f-body); }
+.src { margin-left: auto; font-size: .76rem; color: var(--muted); letter-spacing: .04em; }
+.src.mine { color: var(--accent); font-weight: 700; }
+.summary { margin: 6px 0 0; }
+.when { margin: 10px 0 0; padding: 10px 12px; background: var(--bg); border-radius: 8px; }
+.label { font-size: .76rem; font-weight: 700; color: var(--muted); letter-spacing: .08em; }
+.when ul, details ul { margin: 4px 0 0; padding-left: 1.2em; }
+.when li, details li { margin: 2px 0; }
+details { margin-top: 8px; }
+details summary { cursor: pointer; color: var(--accent); font-size: .88rem; width: fit-content; }
+.more { display: grid; gap: 10px; margin-top: 8px; }
+.note { margin: 0; color: var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: .76rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
+.review { display: inline-block; font-size: .76rem; color: var(--warn); background: var(--warn-soft); border-radius: 4px; padding: 0 6px; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.empty { text-align: center; color: var(--muted); padding: 48px 0; }
+footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+footer h2 { font-family: var(--f-display); font-size: 1rem; color: var(--ink); margin: 0 0 6px; }
+footer ol { margin: 0; padding-left: 1.3em; }
+footer code { font-family: var(--f-mono); font-size: .82rem; background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 4px; }
+@media (max-width: 520px) { header.top h1 { font-size: 1.5rem; } .src { margin-left: 0; width: 100%; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Claude スキル帳</h1>
+    <p>Claude Code で使えるスキルを、日本語で「どんな時に使うか」から探せる一覧です。キーワードやカテゴリで絞り込めます。</p>
+  </header>
+
+  <div class="searchbar">
+    <div class="field">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="q" type="text" enterkeyhint="search" placeholder="やりたいことで検索（例：シフト、Excel、ポスター、研修）" autocomplete="off" aria-label="スキルを検索">
+      <button id="clear" type="button" aria-label="検索をクリア" hidden>×</button>
+    </div>
+  </div>
+  <div class="filters">
+    <div class="hints" id="hints"><span>よく探すこと：</span></div>
+    <div class="chips" id="cats" role="group" aria-label="カテゴリで絞り込み"></div>
+    <div class="chips" id="srcs" role="group" aria-label="種類で絞り込み"></div>
+  </div>
+
+  <p class="status" id="status" aria-live="polite"></p>
+  <main id="results"></main>
+
+  <footer>
+    <h2>新しいスキルを追加したら</h2>
+    <ol>
+      <li>このリポジトリで Claude Code を開くと、新しいスキルが自動で見つかり、一覧に追加されます。</li>
+      <li>「<b>スキル一覧を更新して</b>」と頼むと、日本語の解説を書いて一覧を作り直します（<code>/update-skill-catalog</code>）。</li>
+      <li>GitHub に push すると、一覧ページも自動で作り直されます。</li>
+    </ol>
+    <p>最終更新：__GENERATED_AT__（日本時間）</p>
+  </footer>
+</div>
+
+<script>
+const SKILLS = /*__SKILLS_DATA__*/[];
+const CAT_ORDER = ["病院・看護の業務","書類・資料づくり","デザイン・見た目","調べもの・学び","Google・ブラウザ・PC操作","毎日の習慣・自動化","スキル・設定","プログラム開発","未分類"];
+const CAT_VAR = Object.fromEntries(CAT_ORDER.map((c, i) => [c, `var(--c${i + 1})`]));
+const SRC_ORDER = ["自作スキル","このリポジトリ","Anthropic公式","Claude Code組み込み","未分類"];
+const HINTS = ["シフト","研修","目標管理","アンケート","Excel","Word","パワポ","PDF","ポスター","グラフ","調べる","勉強"];
+
+const state = { q: "", cat: null, src: null };
+try { const saved = JSON.parse(localStorage.getItem("skillbook") || "{}"); Object.assign(state, { cat: saved.cat || null, src: saved.src || null }); } catch (e) {}
+const save = () => { try { localStorage.setItem("skillbook", JSON.stringify({ cat: state.cat, src: state.src })); } catch (e) {} };
+
+// 全角半角・カタカナひらがな・大文字小文字の違いを吸収して検索する
+const norm = (s) => (s || "").normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+SKILLS.forEach((s) => {
+  s._hay = norm([s.id, s.name, s.command, s.category, s.source, s.summary, s.note, ...(s.tags || []), ...(s.use_when || []), ...(s.examples || []), ...(s.aliases || [])].join(" "));
+});
+
+function highlight(text, terms) {
+  let html = esc(text);
+  if (!terms.length) return html;
+  const src = norm(text);
+  // 正規化前後で長さが同じ時だけ位置を合わせて強調する
+  if (src.length !== text.length) return html;
+  const marks = new Array(text.length).fill(false);
+  terms.forEach((t) => { let i = src.indexOf(t); while (t && i !== -1) { for (let k = i; k < i + t.length; k++) marks[k] = true; i = src.indexOf(t, i + t.length); } });
+  let out = "", open = false;
+  for (let i = 0; i < text.length; i++) {
+    if (marks[i] && !open) { out += "<mark>"; open = true; }
+    if (!marks[i] && open) { out += "</mark>"; open = false; }
+    out += esc(text[i]);
+  }
+  return out + (open ? "</mark>" : "");
+}
+
+function matches(s, terms) {
+  if (state.cat && s.category !== state.cat) return false;
+  if (state.src && s.source !== state.src) return false;
+  return terms.every((t) => s._hay.includes(t));
+}
+
+function chip(label, count, pressed, onClick, color) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(pressed));
+  if (color) b.style.setProperty("--cat", color);
+  b.innerHTML = (color ? '<span class="dot"></span>' : "") + `<span>${esc(label)}</span><span class="n">${count}</span>`;
+  if (!count && !pressed) b.classList.add("zero");
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function renderFilters(terms) {
+  const cats = document.getElementById("cats"), srcs = document.getElementById("srcs");
+  cats.replaceChildren(); srcs.replaceChildren();
+  const base = SKILLS.filter((s) => terms.every((t) => s._hay.includes(t)));
+  const catCount = (c) => base.filter((s) => s.category === c && (!state.src || s.source === state.src)).length;
+  const srcCount = (c) => base.filter((s) => s.source === c && (!state.cat || s.category === state.cat)).length;
+  cats.append(chip("すべて", base.filter((s) => !state.src || s.source === state.src).length, !state.cat, () => { state.cat = null; save(); render(); }));
+  CAT_ORDER.filter((c) => SKILLS.some((s) => s.category === c)).forEach((c) =>
+    cats.append(chip(c, catCount(c), state.cat === c, () => { state.cat = state.cat === c ? null : c; save(); render(); }, CAT_VAR[c])));
+  SRC_ORDER.filter((c) => SKILLS.some((s) => s.source === c)).forEach((c) =>
+    srcs.append(chip(c, srcCount(c), state.src === c, () => { state.src = state.src === c ? null : c; save(); render(); })));
+}
+
+function card(s, terms) {
+  const el = document.createElement("article");
+  el.className = "card"; el.id = "skill-" + s.id;
+  el.style.setProperty("--cat", CAT_VAR[s.category] || "var(--c9)");
+  const h = (t) => highlight(t, terms);
+  const list = (items) => `<ul>${items.map((x) => `<li>${h(x)}</li>`).join("")}</ul>`;
+  const extra = [];
+  if (s.examples && s.examples.length) extra.push(`<div><div class="label">頼み方の例</div>${list(s.examples)}</div>`);
+  if (s.not_for && s.not_for.length) extra.push(`<div><div class="label">向いていない時</div>${list(s.not_for)}</div>`);
+  if (s.note) extra.push(`<div><div class="label">補足</div><p class="note">${h(s.note)}</p></div>`);
+  if (s.tags && s.tags.length) extra.push(`<div class="tags">${s.tags.map((t) => `<span class="tag">${h(t)}</span>`).join("")}</div>`);
+  const open = terms.length && extra.length && terms.some((t) => norm([...(s.examples || []), ...(s.not_for || []), s.note, ...(s.tags || [])].join(" ")).includes(t));
+  el.innerHTML = `
+    <div class="card-head">
+      <h3>${h(s.name)}</h3>
+      ${s.command ? `<button type="button" class="cmd" title="クリックでコピー">${esc(s.command)}</button>` : ""}
+      ${s.needs_review ? '<span class="review">解説準備中（英語のまま）</span>' : ""}
+      <span class="src ${s.source === "自作スキル" ? "mine" : ""}">${esc(s.source)}</span>
+    </div>
+    <p class="summary">${h(s.summary)}</p>
+    ${s.use_when && s.use_when.length ? `<div class="when"><div class="label">こんな時に</div>${list(s.use_when)}</div>` : ""}
+    ${extra.length ? `<details${open ? " open" : ""}><summary>頼み方の例・くわしく</summary><div class="more">${extra.join("")}</div></details>` : ""}`;
+  const cmd = el.querySelector(".cmd");
+  if (cmd) cmd.addEventListener("click", () => {
+    const done = () => { cmd.setAttribute("data-copied", ""); setTimeout(() => cmd.removeAttribute("data-copied"), 1400); };
+    try { navigator.clipboard.writeText(s.command).then(done, () => selectText(cmd)); } catch (e) { selectText(cmd); }
+  });
+  return el;
+}
+
+function selectText(node) { const r = document.createRange(); r.selectNodeContents(node); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+
+function render() {
+  const terms = norm(state.q).split(/[\s　]+/).filter(Boolean);
+  renderFilters(terms);
+  const hits = SKILLS.filter((s) => matches(s, terms));
+  const out = document.getElementById("results");
+  out.replaceChildren();
+  document.getElementById("clear").hidden = !state.q;
+  const filters = [state.cat, state.src].filter(Boolean).join("・");
+  document.getElementById("status").textContent =
+    `${hits.length} 件 / 全 ${SKILLS.length} 件` + (state.q ? `　「${state.q}」` : "") + (filters ? `　${filters}で絞り込み中` : "");
+  if (!hits.length) {
+    out.innerHTML = `<div class="empty">見つかりませんでした。<br>ちがう言葉（例：「表」「資料」「予定」）で探すか、絞り込みを解除してください。</div>`;
+    return;
+  }
+  CAT_ORDER.forEach((c) => {
+    const items = hits.filter((s) => s.category === c);
+    if (!items.length) return;
+    const sec = document.createElement("section");
+    sec.className = "group"; sec.style.setProperty("--cat", CAT_VAR[c]);
+    sec.innerHTML = `<h2><span class="dot"></span>${esc(c)}</h2>`;
+    const list = document.createElement("div"); list.className = "list";
+    items.forEach((s) => list.append(card(s, terms)));
+    sec.append(list); out.append(sec);
+  });
+}
+
+const q = document.getElementById("q");
+q.addEventListener("input", () => { state.q = q.value; render(); });
+document.getElementById("clear").addEventListener("click", () => { q.value = ""; state.q = ""; render(); q.focus(); });
+const hints = document.getElementById("hints");
+HINTS.forEach((w) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip hint"; b.textContent = w;
+  b.addEventListener("click", () => { q.value = w; state.q = w; render(); });
+  hints.append(b);
+});
+render();
+</script>

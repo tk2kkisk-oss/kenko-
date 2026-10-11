@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Claude スキル帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: sticky search bar over a single column of skill cards, grouped by category; filters wrap as chips. */
+:root {
+  --bg: #f3f6f6;
+  --surface: #ffffff;
+  --ink: #18323a;
+  --muted: #5b7279;
+  --line: #d6e1e2;
+  --accent: #1f7a83;
+  --accent-soft: #e0f0f0;
+  --warn: #9a5b00;
+  --warn-soft: #fff1d6;
+  --mark: #fff3a8;
+  --f-display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --f-body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  --f-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* category hues */
+  --c1: #c2554a; --c2: #3a6ea5; --c3: #9a4f9c; --c4: #2f8a5a;
+  --c5: #b07a12; --c6: #c06a2b; --c7: #4f6470; --c8: #5a5fb0; --c9: #8a8f93;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1a1d; --surface: #16252a; --ink: #e4eeee; --muted: #9db2b6; --line: #284047;
+    --accent: #5cc3c9; --accent-soft: #173a3e; --warn: #f0b85a; --warn-soft: #3a2c12; --mark: #5b5420;
+    --c1: #e3877d; --c2: #7fa9d8; --c3: #c78bc9; --c4: #6cc093; --c5: #d9ad52; --c6: #e3995f; --c7: #9fb3bd; --c8: #9a9de0; --c9: #a9aeb2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1a1d; --surface: #16252a; --ink: #e4eeee; --muted: #9db2b6; --line: #284047;
+  --accent: #5cc3c9; --accent-soft: #173a3e; --warn: #f0b85a; --warn-soft: #3a2c12; --mark: #5b5420;
+  --c1: #e3877d; --c2: #7fa9d8; --c3: #c78bc9; --c4: #6cc093; --c5: #d9ad52; --c6: #e3995f; --c7: #9fb3bd; --c8: #9a9de0; --c9: #a9aeb2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.7; margin: 0; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; }
+header.top h1 { font-family: var(--f-display); font-weight: 700; font-size: 1.9rem; line-height: 1.3; margin: 0; text-wrap: balance; }
+header.top p { color: var(--muted); margin: 6px 0 0; max-width: 60ch; }
+.searchbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 14px 4px; margin-top: 16px; }
+.field { position: relative; }
+.field svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); }
+#q { width: 100%; font: inherit; font-size: 1rem; padding: 12px 40px 12px 42px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); }
+#q:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+#clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: 0; background: transparent; color: var(--muted); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.filters { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.hints { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; font-size: .85rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { font: inherit; font-size: .84rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 3px 11px; border-radius: 999px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip .n { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .78rem; }
+.chip.zero { opacity: .45; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: .7; }
+.chip.hint { border-style: dashed; }
+.chip:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cat); flex: none; }
+.status { color: var(--muted); font-size: .88rem; margin: 14px 0 0; font-variant-numeric: tabular-nums; }
+section.group { margin-top: 26px; }
+section.group > h2 { font-family: var(--f-display); font-size: 1.15rem; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+section.group > h2 .dot { width: 10px; height: 10px; }
+.list { display: flex; flex-direction: column; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--cat); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.card h3 { font-family: var(--f-display); font-size: 1.08rem; margin: 0; line-height: 1.4; }
+.cmd { font-family: var(--f-mono); font-size: .82rem; color: var(--accent); background: var(--accent-soft); border: 0; padding: 1px 8px; border-radius: 6px; cursor: pointer; }
+.cmd[data-copied]::after { content: " コピーしました"; font-family: var(--f-body); }
+.src { margin-left: auto; font-size: .76rem; color: var(--muted); letter-spacing: .04em; }
+.src.mine { color: var(--accent); font-weight: 700; }
+.summary { margin: 6px 0 0; }
+.when { margin: 10px 0 0; padding: 10px 12px; background: var(--bg); border-radius: 8px; }
+.label { font-size: .76rem; font-weight: 700; color: var(--muted); letter-spacing: .08em; }
+.when ul, details ul { margin: 4px 0 0; padding-left: 1.2em; }
+.when li, details li { margin: 2px 0; }
+details { margin-top: 8px; }
+details summary { cursor: pointer; color: var(--accent); font-size: .88rem; width: fit-content; }
+.more { display: grid; gap: 10px; margin-top: 8px; }
+.note { margin: 0; color: var(--ink); }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: .76rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
+.review { display: inline-block; font-size: .76rem; color: var(--warn); background: var(--warn-soft); border-radius: 4px; padding: 0 6px; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.empty { text-align: center; color: var(--muted); padding: 48px 0; }
+footer { margin-top: 48px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+footer h2 { font-family: var(--f-display); font-size: 1rem; color: var(--ink); margin: 0 0 6px; }
+footer ol { margin: 0; padding-left: 1.3em; }
+footer code { font-family: var(--f-mono); font-size: .82rem; background: var(--surface); border: 1px solid var(--line); padding: 0 4px; border-radius: 4px; }
+@media (max-width: 520px) { header.top h1 { font-size: 1.5rem; } .src { margin-left: 0; width: 100%; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Claude スキル帳</h1>
+    <p>Claude Code で使えるスキルを、日本語で「どんな時に使うか」から探せる一覧です。キーワードやカテゴリで絞り込めます。</p>
+  </header>
+
+  <div class="searchbar">
+    <div class="field">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+      <input id="q" type="text" enterkeyhint="search" placeholder="やりたいことで検索（例：シフト、Excel、ポスター、研修）" autocomplete="off" aria-label="スキルを検索">
+      <button id="clear" type="button" aria-label="検索をクリア" hidden>×</button>
+    </div>
+  </div>
+  <div class="filters">
+    <div class="hints" id="hints"><span>よく探すこと：</span></div>
+    <div class="chips" id="cats" role="group" aria-label="カテゴリで絞り込み"></div>
+    <div class="chips" id="srcs" role="group" aria-label="種類で絞り込み"></div>
+  </div>
+
+  <p class="status" id="status" aria-live="polite"></p>
+  <main id="results"></main>
+
+  <footer>
+    <h2>新しいスキルを追加したら</h2>
+    <ol>
+      <li>このリポジトリで Claude Code を開くと、新しいスキルが自動で見つかり、一覧に追加されます。</li>
+      <li>「<b>スキル一覧を更新して</b>」と頼むと、日本語の解説を書いて一覧を作り直します（<code>/update-skill-catalog</code>）。</li>
+      <li>GitHub に push すると、一覧ページも自動で作り直されます。</li>
+    </ol>
+    <p>最終更新：2026-10-12 05:19（日本時間）</p>
+  </footer>
+</div>
+
+<script>
+const SKILLS = [{"id": "jpruq-analysis", "name": "J-PRUQアンケート分析", "command": "/jpruq-analysis", "category": "病院・看護の業務", "source": "自作スキル", "summary": "身体拘束認識尺度（J-PRUQ）の院内アンケートCSVを分析し、印刷用ページ・ダッシュボード・Word報告書・PowerPoint資料を作ります。", "tags": ["J-PRUQ", "身体拘束", "抑制", "アンケート", "分析", "CSV", "報告書", "ダッシュボード"], "use_when": ["J-PRUQのアンケート結果（CSV）が集まった時", "委員会や会議で身体拘束に関する意識調査の結果を報告する時", "前回の結果を新しいデータで更新したい時"], "examples": ["「J-PRUQの分析をして」（CSVを添付）", "「抑制アンケートの報告書をWordで」"], "not_for": [], "aliases": [], "note": "読む人に合わせて形を選べます。会議で配るなら印刷用、全体を見渡すならタブ式ダッシュボード、提出用ならWord、発表ならPowerPoint、という使い分けです。", "needs_review": false, "file": "catalog/skills/jpruq-analysis.md"}, {"id": "mbo-redline", "name": "目標管理シートの添削", "command": "/mbo-redline", "category": "病院・看護の業務", "source": "自作スキル", "summary": "看護師・看護補助者の目標管理・評価シートを、キャリアラダーのランクに照らして添削し、赤ペン用メモと面談要点をWordで作ります。", "tags": ["目標管理", "評価シート", "添削", "赤ペン", "キャリアラダー", "面談", "看護師", "Word"], "use_when": ["スタッフから目標管理シートが提出された時", "目標がその人のラダーのランクに合っているか確かめたい時", "面談の前に、伝えるポイントを整理したい時"], "examples": ["「この目標管理シートを添削して（ラダーⅡ）」", "「赤ペンしたいので下書きを作って」", "「この目標は妥当か見て」"], "not_for": ["シートの自動書き換え（師長が自分で赤ペンを入れるための下書きを作ります）"], "aliases": [], "note": "シートの写真やPDFと、本人のラダーのランクを伝えると、A4・4ページのWordで「添削メモ」と「面談で伝える要点」をまとめます。", "needs_review": false, "file": "catalog/skills/mbo-redline.md"}, {"id": "shift-calendar-sync", "name": "シフトをカレンダーに登録", "command": "/shift-calendar-sync", "category": "病院・看護の業務", "source": "自作スキル", "summary": "シフト表の写真やスクショから自分の勤務を読み取り、Googleカレンダーに色分けして登録・差分更新します。", "tags": ["シフト", "勤務表", "シフトナ", "Googleカレンダー", "予定", "夜勤", "写真"], "use_when": ["新しい月のシフト表が出た時", "シフトが変更になってカレンダーを直したい時", "シフト表の画像を添付して「登録して」と頼む時"], "examples": ["「シフト登録して」（シフト表の画像を添付）", "「来月のシフトが変わったので更新して」"], "not_for": ["他の職員のシフト登録（本人分だけを読み取ります）"], "aliases": [], "note": "すでに登録済みの予定と比べて、変わった日だけを更新します（差分更新）。日勤・夜勤などの勤務の種類ごとにカレンダーの色を分けて登録します。", "needs_review": false, "file": "catalog/skills/shift-calendar-sync.md"}, {"id": "training-attendance", "name": "研修の出欠集計", "command": "/training-attendance", "category": "病院・看護の業務", "source": "自作スキル", "summary": "動画研修のGoogleフォーム回答から、部署別の受講者集計・未回答候補・要確認リストをExcelで作ります。", "tags": ["研修", "出欠", "受講者", "Googleフォーム", "部署別", "未回答", "Excel"], "use_when": ["動画研修のアンケート（Googleフォーム）の回答がそろった時", "部署ごとに誰が受講したかを一覧にしたい時", "まだ回答していない人の候補を、過去の研修の回答者と照らし合わせて洗い出したい時"], "examples": ["「医療安全研修の出欠を集計して」", "「この回答CSVから受講者集計を作って」"], "not_for": ["全職員名簿との完全な突合（名簿なしで運用する前提のスキルです）"], "aliases": [], "note": "全職員の名簿がなくても、過去の研修の回答者を手がかりに「回答していないかもしれない人」を推定します。名前の表記ゆれなど判断が必要なものは「要確認リスト」に分けて出すので、最後は目で確認してください。", "needs_review": false, "file": "catalog/skills/training-attendance.md"}, {"id": "doc-coauthoring", "name": "文書を一緒に書く", "command": "/doc-coauthoring", "category": "書類・資料づくり", "source": "Anthropic公式", "summary": "企画書・提案書・仕様書などを、聞き取り → 構成づくり → 読み手目線のチェック、の順で一緒に仕上げます。", "tags": ["共同執筆", "企画書", "提案書", "構成", "文章", "推敲"], "use_when": ["何を書くかはあるけれど、まとめ方に迷っている時", "上司や委員会に出す提案書をしっかり作りたい時"], "examples": ["「業務改善の提案書を一緒に書きたい」"], "not_for": ["短いメモや一言の文章（チャットで十分です）"], "aliases": [], "note": "いきなり書き始めず、まず背景を質問して情報を集めます。最後に「初めて読む人が理解できるか」を確認する工程があります。", "needs_review": false, "file": "catalog/skills/doc-coauthoring.md"}, {"id": "docs", "name": "共有ドキュメントを作る", "command": "/docs", "category": "書類・資料づくり", "source": "Anthropic公式", "summary": "みんなで読んだりコメントしたりできるドキュメント（報告書・手順書・案内文など）を作ります。Word・PDF・Googleドキュメントにも書き出せます。", "tags": ["ドキュメント", "文書", "報告書", "手順書", "マニュアル", "案内", "共有", "コメント"], "use_when": ["報告書・手順書・お知らせなど、残しておく文章を作りたい時", "作った文章を他の人に見せてコメントをもらいたい時", "形式にこだわりがなく、まず文書を作りたい時"], "examples": ["「新人向けの申し送り手順書を作って」", "「病棟会議の議事録をドキュメントにして」"], "not_for": ["Word形式（.docx）を指定したい時は docx スキルが向いています"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/docs.md"}, {"id": "docx", "name": "Word文書を作る・直す", "command": "/docx", "category": "書類・資料づくり", "source": "Anthropic公式", "summary": "Wordファイル（.docx）の作成・読み取り・編集をします。変更履歴やコメント付きの編集、テンプレートの差し込みもできます。", "tags": ["Word", "ワード", "docx", "文書", "テンプレート", "変更履歴"], "use_when": ["提出先から「Wordで」と指定されている時", "手元のWordファイルを直したい・中身を読み取りたい時", "変更履歴を残しながら修正したい時"], "examples": ["「この申請書（.docx）の日付と名前を書き換えて」", "「報告書をWordで作って」"], "not_for": ["PDFやExcelの作業（それぞれ専用のスキルがあります）"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/docx.md"}, {"id": "pdf", "name": "PDFを扱う", "command": "/pdf", "category": "書類・資料づくり", "source": "Anthropic公式", "summary": "PDFの読み取り・表の取り出し・結合・分割・回転・透かし・フォーム入力・文字認識（OCR）などをまとめて扱います。", "tags": ["PDF", "結合", "分割", "OCR", "文字認識", "フォーム", "スキャン"], "use_when": ["複数のPDFを1つにまとめたい・ページを分けたい時", "スキャンしたPDFの文字を読み取りたい時", "PDFの申込書に入力したい時"], "examples": ["「この3つのPDFを1つにまとめて」", "「スキャンした議事録PDFを文字にして」"], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/pdf.md"}, {"id": "pptx", "name": "PowerPointを作る・直す", "command": "/pptx", "category": "書類・資料づくり", "source": "Anthropic公式", "summary": "PowerPoint（.pptx）のスライド作成・編集・内容の読み取りをします。", "tags": ["PowerPoint", "パワポ", "スライド", "プレゼン", "発表", "pptx"], "use_when": ["研修や会議の発表スライドをPowerPointで作りたい時", "手元のパワポを直したい、中身を文章として取り出したい時"], "examples": ["「看護研究の発表用スライドを10枚で」", "「このpptxの内容を要約して」"], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/pptx.md"}, {"id": "xlsx", "name": "Excel表を作る・直す", "command": "/xlsx", "category": "書類・資料づくり", "source": "Anthropic公式", "summary": "Excel（.xlsx）やCSVの作成・編集・集計をします。数式、グラフ、乱れた表の整理もできます。", "tags": ["Excel", "エクセル", "xlsx", "CSV", "表", "集計", "グラフ", "数式"], "use_when": ["Excelファイルを作りたい・直したい時", "CSVやバラバラのデータを見やすい表に整えたい時", "集計表やグラフ付きの表がほしい時"], "examples": ["「この勤務実績CSVを部署別に集計してExcelに」", "「この表の列をそろえて見やすくして」"], "not_for": ["最終的にほしいのがWordやスライドの時"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/xlsx.md"}, {"id": "canvas-design", "name": "ポスター・アートを作る", "command": "/canvas-design", "category": "デザイン・見た目", "source": "Anthropic公式", "summary": "ポスターやアート作品などの1枚もののデザインを、PNG・PDFで作ります。", "tags": ["ポスター", "デザイン", "アート", "掲示物", "PNG", "PDF"], "use_when": ["院内掲示用のポスターを作りたい時", "イベントの案内などを見栄えよく作りたい時"], "examples": ["「手指衛生キャンペーンのポスターを作って」"], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/canvas-design.md"}, {"id": "theme-factory", "name": "デザインのテーマを当てる", "command": "/theme-factory", "category": "デザイン・見た目", "source": "Anthropic公式", "summary": "スライド・文書・ページなどに、配色とフォントのそろったテーマ（10種類＋自作）を当てて見た目を整えます。", "tags": ["テーマ", "配色", "フォント", "見た目", "デザイン"], "use_when": ["作った資料の見た目を統一したい時", "「もう少し落ち着いた色に」など雰囲気を変えたい時"], "examples": ["「このスライドを落ち着いたテーマにして」"], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/theme-factory.md"}, {"id": "web-artifacts-builder", "name": "本格的なWebページを作る", "command": "/web-artifacts-builder", "category": "デザイン・見た目", "source": "Anthropic公式", "summary": "画面の切り替えや入力のある、作り込んだWebページ（アーティファクト）を最新の技術で作ります。", "tags": ["Webページ", "アプリ", "ツール", "React", "画面"], "use_when": ["タブや入力欄のある、少し複雑なツールをページで作りたい時"], "examples": ["「病棟の物品チェック表を、入力できるページで作って」"], "not_for": ["シンプルな1枚のページ（このスキルは使わずに作れます）"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/web-artifacts-builder.md"}, {"id": "artifact-capabilities", "name": "ページに機能を足す", "command": "", "category": "デザイン・見た目", "source": "Claude Code組み込み", "summary": "作ったページに「入力を保存する」「みんなで共有する」などの機能を持たせる時の設定集です。", "tags": ["アーティファクト", "保存", "共有", "入力"], "use_when": ["チェックリストや申込表など、入力内容を残したいページを作る時"], "examples": ["「みんなでチェックできる物品チェック表を作って」"], "not_for": [], "aliases": [], "note": "Claudeが裏側で使います。", "needs_review": false, "file": "catalog/skills/artifact-capabilities.md"}, {"id": "artifact-design", "name": "ページのデザイン指針", "command": "", "category": "デザイン・見た目", "source": "Claude Code組み込み", "summary": "Claudeがアーティファクト（Webページ）を作る時に必ず読む、デザインの基本ルールです。", "tags": ["アーティファクト", "ページ", "デザイン"], "use_when": ["ページを作る時（自動的に使われます）"], "examples": [], "not_for": [], "aliases": [], "note": "自分で呼び出すものではなく、Claudeが裏側で使います。", "needs_review": false, "file": "catalog/skills/artifact-design.md"}, {"id": "artifact-diagramming", "name": "図解をつくる", "command": "", "category": "デザイン・見た目", "source": "Claude Code組み込み", "summary": "仕組みや流れを図で説明するときの描き方のルールです。", "tags": ["図解", "フローチャート", "図", "説明"], "use_when": ["流れや仕組みを図で見せたい時（自動的に使われます）"], "examples": ["「入院から退院までの流れを図にして」"], "not_for": [], "aliases": [], "note": "Claudeが図を描く時に裏側で使います。", "needs_review": false, "file": "catalog/skills/artifact-diagramming.md"}, {"id": "dataviz", "name": "グラフ・図表をきれいに", "command": "/dataviz", "category": "デザイン・見た目", "source": "Claude Code組み込み", "summary": "グラフやダッシュボードを作る時の配色・見せ方のルールです。見やすく統一感のあるグラフになります。", "tags": ["グラフ", "図表", "ダッシュボード", "可視化", "配色"], "use_when": ["データをグラフにしたい時（自動的に使われます）"], "examples": ["「転倒件数の推移をグラフにして」"], "not_for": [], "aliases": [], "note": "グラフを作る時にClaudeが自動で参照する「グラフ作りの決まりごと」です。自分で呼び出す必要はほとんどありません。", "needs_review": false, "file": "catalog/skills/dataviz.md"}, {"id": "deep-research", "name": "じっくり調べてレポート", "command": "/deep-research", "category": "調べもの・学び", "source": "Anthropic公式", "summary": "複数の情報源を調べて比較・整理し、まとまったレポートにします。", "tags": ["調査", "リサーチ", "文献", "比較", "レポート", "論文"], "use_when": ["ガイドラインや文献を広く調べてまとめてほしい時", "いくつかの方法・製品を比べたい時"], "examples": ["「せん妄予防の看護ケアについて最近の文献を調べてまとめて」", "「病棟で使える転倒予防策を比較して」"], "not_for": ["一言で答えが出る質問（普通に聞けば十分です）"], "aliases": [], "note": "複数の調査役（サブエージェント）を並行して動かすため、少し時間がかかります。", "needs_review": false, "file": "catalog/skills/deep-research.md"}, {"id": "import-memory", "name": "他のAIの記憶を引っ越し", "command": "/import-memory", "category": "調べもの・学び", "source": "Anthropic公式", "summary": "ChatGPTなど他のAIアシスタントに覚えさせていた内容を、Claudeの記憶に取り込みます。", "tags": ["記憶", "メモリ", "引っ越し", "ChatGPT", "移行"], "use_when": ["他のAIからClaudeに乗り換える時"], "examples": ["「ChatGPTのメモリをエクスポートしたので取り込んで」"], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/import-memory.md"}, {"id": "learn", "name": "わかりやすく教えてもらう", "command": "/learn", "category": "調べもの・学び", "source": "Anthropic公式", "summary": "「なぜ？」「どういう仕組み？」を理解したい時に、段階的に説明したり、クイズや暗記カードで学びを助けます。", "tags": ["学習", "勉強", "説明", "クイズ", "暗記カード", "仕組み"], "use_when": ["新しい概念をしっかり理解したい時", "何度覚えても混同してしまうことを整理したい時", "勉強の順番を知りたい時"], "examples": ["「酸塩基平衡をやさしく教えて」", "「統計のt検定をクイズ形式で」"], "not_for": ["作業そのものを頼みたい時（資料作成など）"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/learn.md"}, {"id": "built-in-browser", "name": "アプリ内ブラウザを使う", "command": "/built-in-browser", "category": "Google・ブラウザ・PC操作", "source": "Anthropic公式", "summary": "Claudeデスクトップアプリに内蔵のブラウザでWebページを開いて読んだり操作したりします。", "tags": ["ブラウザ", "Webサイト", "デスクトップアプリ"], "use_when": ["Claudeにページを開いて確認してほしい時"], "examples": [], "not_for": [], "aliases": [], "note": "Claudeデスクトップアプリで使います。", "needs_review": false, "file": "catalog/skills/built-in-browser.md"}, {"id": "chrome-browser", "name": "Chromeを操作する", "command": "/chrome-browser", "category": "Google・ブラウザ・PC操作", "source": "Anthropic公式", "summary": "拡張機能「Claude in Chrome」を使って、あなたのChromeブラウザでページを見たり操作したりします。", "tags": ["Chrome", "ブラウザ", "Webサイト", "操作", "自動入力"], "use_when": ["ログインが必要なWebサイトでの作業を手伝ってほしい時"], "examples": ["「Chromeで院内の申請サイトを開いて入力を手伝って」"], "not_for": [], "aliases": [], "note": "Claude in Chrome拡張機能が必要です。", "needs_review": false, "file": "catalog/skills/chrome-browser.md"}, {"id": "computer-use", "name": "パソコンを操作する", "command": "/computer-use", "category": "Google・ブラウザ・PC操作", "source": "Anthropic公式", "summary": "画面を見ながらクリックや入力をして、パソコンのアプリを操作します。", "tags": ["パソコン", "画面", "操作", "アプリ", "クリック"], "use_when": ["パソコンのアプリでの手作業を代わりにやってほしい時"], "examples": ["「メモアプリに今日のToDoを書いておいて」"], "not_for": [], "aliases": [], "note": "Claudeデスクトップアプリでコンピューター操作をオンにする必要があります。", "needs_review": false, "file": "catalog/skills/computer-use.md"}, {"id": "google-workspace", "name": "Googleドキュメント・スプレッドシートを編集", "command": "/google-workspace", "category": "Google・ブラウザ・PC操作", "source": "Anthropic公式", "summary": "GoogleドライブのGoogleドキュメント・スプレッドシート・スライドを作ったり書き換えたりします。", "tags": ["Google", "ドキュメント", "スプレッドシート", "スライド", "ドライブ"], "use_when": ["「Googleスプレッドシートで」と指定して作りたい・直したい時", "共有されているGoogleファイルを編集したい時"], "examples": ["「このGoogleスプレッドシートに今月分の行を足して」"], "not_for": ["Google以外のWord・Excelファイル（docx / xlsx スキルを使います）"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/google-workspace.md"}, {"id": "morning", "name": "朝のブリーフィング", "command": "/morning", "category": "毎日の習慣・自動化", "source": "Anthropic公式", "summary": "今日の予定や知っておくべきことを、朝30秒で見られる1枚のページにまとめます。平日に自動で作る設定もできます。", "tags": ["朝", "予定", "ブリーフィング", "今日", "まとめ"], "use_when": ["一日の始まりに予定をざっと確認したい時", "毎朝自動でまとめてほしい時"], "examples": ["「/morning」", "「朝のブリーフィングを平日に毎日作るように設定して」"], "not_for": ["「今日の予定は？」だけ知りたい時（普通に聞けば答えます）"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/morning.md"}, {"id": "loop", "name": "くり返し実行する", "command": "/loop", "category": "毎日の習慣・自動化", "source": "Claude Code組み込み", "summary": "決まった作業を一定間隔でくり返し実行します（例：5分ごとに確認）。", "tags": ["くり返し", "定期実行", "自動", "監視"], "use_when": ["何かの状況を定期的にチェックしたい時"], "examples": ["「/loop 30m 新着メールを確認して」"], "not_for": ["1回きりの作業"], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/loop.md"}, {"id": "update-skill-catalog", "name": "スキル一覧を更新する", "command": "/update-skill-catalog", "category": "スキル・設定", "source": "このリポジトリ", "summary": "このスキル一覧に、新しく追加したスキルを日本語の解説つきで登録し、一覧ページを作り直します。", "tags": ["スキル一覧", "更新", "カタログ", "追加"], "use_when": ["新しいスキルを作った・追加した後", "一覧に「説明が英語のまま」のスキルが出ている時"], "examples": ["「スキル一覧を更新して」", "「新しく作ったスキルを一覧に追加して」"], "not_for": [], "aliases": [], "note": "このリポジトリで作業する時だけ使えるスキルです。", "needs_review": false, "file": "catalog/skills/update-skill-catalog.md"}, {"id": "skill-creator", "name": "スキルを作る・改良する", "command": "/skill-creator", "category": "スキル・設定", "source": "Anthropic公式", "summary": "新しいスキルを一から作ったり、今あるスキルを改良したり、うまく働くかテストしたりします。", "tags": ["スキル作成", "自作", "改良", "テスト"], "use_when": ["毎回同じ説明をしている作業を、スキルにまとめたい時", "自作スキルがうまく呼び出されない・結果がいまいちな時"], "examples": ["「いつもの研修出欠の手順をスキルにしたい」", "「mbo-redline をもっと使いやすく改良して」"], "not_for": [], "aliases": [], "note": "新しくスキルを作ったら、このスキル一覧にも自動で追加されます（詳しくはREADME）。", "needs_review": false, "file": "catalog/skills/skill-creator.md"}, {"id": "fewer-permission-prompts", "name": "確認ダイアログを減らす", "command": "/fewer-permission-prompts", "category": "スキル・設定", "source": "Claude Code組み込み", "summary": "よく使う安全な操作を調べて、毎回の「許可しますか？」を減らす設定を追加します。", "tags": ["許可", "確認", "ダイアログ", "設定"], "use_when": ["許可の確認が多くて作業が止まりがちな時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/fewer-permission-prompts.md"}, {"id": "init", "name": "プロジェクト説明書を作る", "command": "/init", "category": "スキル・設定", "source": "Claude Code組み込み", "summary": "フォルダの中身を調べて、Claudeが作業に使う説明書（CLAUDE.md）を作ります。", "tags": ["CLAUDE.md", "初期設定", "プロジェクト"], "use_when": ["新しいフォルダ・リポジトリでClaude Codeを使い始める時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/init.md"}, {"id": "keybindings-help", "name": "キーボードショートカット設定", "command": "/keybindings-help", "category": "スキル・設定", "source": "Claude Code組み込み", "summary": "Claude Codeのキーボードショートカットを変更・追加します。", "tags": ["ショートカット", "キーボード", "キー設定"], "use_when": ["よく使う操作のキーを変えたい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/keybindings-help.md"}, {"id": "plugin-authoring", "name": "Claude Codeの改造", "command": "/plugin-authoring", "category": "スキル・設定", "source": "Claude Code組み込み", "summary": "Claude Codeの画面に表示を足したり、独自のコマンドを作ったりする「改造（mod）」を作ります。", "tags": ["プラグイン", "改造", "コマンド", "表示"], "use_when": ["自分専用のコマンドや表示をClaude Codeに足したい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/plugin-authoring.md"}, {"id": "session-start-hook", "name": "クラウド作業の準備設定", "command": "/session-start-hook", "category": "スキル・設定", "source": "Claude Code組み込み", "summary": "クラウドでClaude Codeを使う時に、作業開始時の準備（必要なソフトの用意など）を自動化する設定を作ります。", "tags": ["クラウド", "起動", "準備", "フック", "自動"], "use_when": ["クラウド版Claude Codeで、毎回の準備を自動化したい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/session-start-hook.md"}, {"id": "update-config", "name": "Claude Codeの設定を変える", "command": "/update-config", "category": "スキル・設定", "source": "Claude Code組み込み", "summary": "Claude Codeの設定ファイル（settings.json）を変更します。「○○の時は毎回××して」のような自動動作もここで設定します。", "tags": ["設定", "settings", "自動", "許可", "フック"], "use_when": ["「毎回○○する時は××して」という決まりを作りたい時", "特定のコマンドの確認を省きたい時"], "examples": ["「作業が終わったら通知するようにして」"], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/update-config.md"}, {"id": "claude-api", "name": "Claude APIの資料", "command": "/claude-api", "category": "プログラム開発", "source": "Claude Code組み込み", "summary": "Claude APIでプログラムを作る時の、モデル名・料金・使い方などの参考資料です。", "tags": ["API", "プログラム", "開発", "モデル"], "use_when": ["Claudeを使ったアプリやプログラムを作る時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/claude-api.md"}, {"id": "code-review", "name": "コードの見直し", "command": "/code-review", "category": "プログラム開発", "source": "Claude Code組み込み", "summary": "プログラムの変更内容を見直して、不具合がないか探します。", "tags": ["コードレビュー", "不具合", "バグ", "確認"], "use_when": ["プログラムを変更した後、確認してほしい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/code-review.md"}, {"id": "run", "name": "アプリを起動して確かめる", "command": "/run", "category": "プログラム開発", "source": "Claude Code組み込み", "summary": "作ったアプリやプログラムを実際に動かして、ちゃんと動くか確認します。", "tags": ["起動", "実行", "動作確認", "スクリーンショット"], "use_when": ["作ったものが本当に動くか見たい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/run.md"}, {"id": "security-review", "name": "セキュリティ確認", "command": "/security-review", "category": "プログラム開発", "source": "Claude Code組み込み", "summary": "変更したプログラムに、情報漏えいなどの危険がないか確認します。", "tags": ["セキュリティ", "安全", "確認"], "use_when": ["公開する前に安全かどうか確かめたい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/security-review.md"}, {"id": "simplify", "name": "コードを整理する", "command": "/simplify", "category": "プログラム開発", "source": "Claude Code組み込み", "summary": "プログラムの変更部分を、重複を減らしてシンプルに整理します。", "tags": ["リファクタリング", "整理", "シンプル"], "use_when": ["動くけれど読みにくくなったプログラムを整えたい時"], "examples": [], "not_for": [], "aliases": [], "note": "", "needs_review": false, "file": "catalog/skills/simplify.md"}];
+const CAT_ORDER = ["病院・看護の業務","書類・資料づくり","デザイン・見た目","調べもの・学び","Google・ブラウザ・PC操作","毎日の習慣・自動化","スキル・設定","プログラム開発","未分類"];
+const CAT_VAR = Object.fromEntries(CAT_ORDER.map((c, i) => [c, `var(--c${i + 1})`]));
+const SRC_ORDER = ["自作スキル","このリポジトリ","Anthropic公式","Claude Code組み込み","未分類"];
+const HINTS = ["シフト","研修","目標管理","アンケート","Excel","Word","パワポ","PDF","ポスター","グラフ","調べる","勉強"];
+
+const state = { q: "", cat: null, src: null };
+try { const saved = JSON.parse(localStorage.getItem("skillbook") || "{}"); Object.assign(state, { cat: saved.cat || null, src: saved.src || null }); } catch (e) {}
+const save = () => { try { localStorage.setItem("skillbook", JSON.stringify({ cat: state.cat, src: state.src })); } catch (e) {} };
+
+// 全角半角・カタカナひらがな・大文字小文字の違いを吸収して検索する
+const norm = (s) => (s || "").normalize("NFKC").toLowerCase().replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+SKILLS.forEach((s) => {
+  s._hay = norm([s.id, s.name, s.command, s.category, s.source, s.summary, s.note, ...(s.tags || []), ...(s.use_when || []), ...(s.examples || []), ...(s.aliases || [])].join(" "));
+});
+
+function highlight(text, terms) {
+  let html = esc(text);
+  if (!terms.length) return html;
+  const src = norm(text);
+  // 正規化前後で長さが同じ時だけ位置を合わせて強調する
+  if (src.length !== text.length) return html;
+  const marks = new Array(text.length).fill(false);
+  terms.forEach((t) => { let i = src.indexOf(t); while (t && i !== -1) { for (let k = i; k < i + t.length; k++) marks[k] = true; i = src.indexOf(t, i + t.length); } });
+  let out = "", open = false;
+  for (let i = 0; i < text.length; i++) {
+    if (marks[i] && !open) { out += "<mark>"; open = true; }
+    if (!marks[i] && open) { out += "</mark>"; open = false; }
+    out += esc(text[i]);
+  }
+  return out + (open ? "</mark>" : "");
+}
+
+function matches(s, terms) {
+  if (state.cat && s.category !== state.cat) return false;
+  if (state.src && s.source !== state.src) return false;
+  return terms.every((t) => s._hay.includes(t));
+}
+
+function chip(label, count, pressed, onClick, color) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(pressed));
+  if (color) b.style.setProperty("--cat", color);
+  b.innerHTML = (color ? '<span class="dot"></span>' : "") + `<span>${esc(label)}</span><span class="n">${count}</span>`;
+  if (!count && !pressed) b.classList.add("zero");
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function renderFilters(terms) {
+  const cats = document.getElementById("cats"), srcs = document.getElementById("srcs");
+  cats.replaceChildren(); srcs.replaceChildren();
+  const base = SKILLS.filter((s) => terms.every((t) => s._hay.includes(t)));
+  const catCount = (c) => base.filter((s) => s.category === c && (!state.src || s.source === state.src)).length;
+  const srcCount = (c) => base.filter((s) => s.source === c && (!state.cat || s.category === state.cat)).length;
+  cats.append(chip("すべて", base.filter((s) => !state.src || s.source === state.src).length, !state.cat, () => { state.cat = null; save(); render(); }));
+  CAT_ORDER.filter((c) => SKILLS.some((s) => s.category === c)).forEach((c) =>
+    cats.append(chip(c, catCount(c), state.cat === c, () => { state.cat = state.cat === c ? null : c; save(); render(); }, CAT_VAR[c])));
+  SRC_ORDER.filter((c) => SKILLS.some((s) => s.source === c)).forEach((c) =>
+    srcs.append(chip(c, srcCount(c), state.src === c, () => { state.src = state.src === c ? null : c; save(); render(); })));
+}
+
+function card(s, terms) {
+  const el = document.createElement("article");
+  el.className = "card"; el.id = "skill-" + s.id;
+  el.style.setProperty("--cat", CAT_VAR[s.category] || "var(--c9)");
+  const h = (t) => highlight(t, terms);
+  const list = (items) => `<ul>${items.map((x) => `<li>${h(x)}</li>`).join("")}</ul>`;
+  const extra = [];
+  if (s.examples && s.examples.length) extra.push(`<div><div class="label">頼み方の例</div>${list(s.examples)}</div>`);
+  if (s.not_for && s.not_for.length) extra.push(`<div><div class="label">向いていない時</div>${list(s.not_for)}</div>`);
+  if (s.note) extra.push(`<div><div class="label">補足</div><p class="note">${h(s.note)}</p></div>`);
+  if (s.tags && s.tags.length) extra.push(`<div class="tags">${s.tags.map((t) => `<span class="tag">${h(t)}</span>`).join("")}</div>`);
+  const open = terms.length && extra.length && terms.some((t) => norm([...(s.examples || []), ...(s.not_for || []), s.note, ...(s.tags || [])].join(" ")).includes(t));
+  el.innerHTML = `
+    <div class="card-head">
+      <h3>${h(s.name)}</h3>
+      ${s.command ? `<button type="button" class="cmd" title="クリックでコピー">${esc(s.command)}</button>` : ""}
+      ${s.needs_review ? '<span class="review">解説準備中（英語のまま）</span>' : ""}
+      <span class="src ${s.source === "自作スキル" ? "mine" : ""}">${esc(s.source)}</span>
+    </div>
+    <p class="summary">${h(s.summary)}</p>
+    ${s.use_when && s.use_when.length ? `<div class="when"><div class="label">こんな時に</div>${list(s.use_when)}</div>` : ""}
+    ${extra.length ? `<details${open ? " open" : ""}><summary>頼み方の例・くわしく</summary><div class="more">${extra.join("")}</div></details>` : ""}`;
+  const cmd = el.querySelector(".cmd");
+  if (cmd) cmd.addEventListener("click", () => {
+    const done = () => { cmd.setAttribute("data-copied", ""); setTimeout(() => cmd.removeAttribute("data-copied"), 1400); };
+    try { navigator.clipboard.writeText(s.command).then(done, () => selectText(cmd)); } catch (e) { selectText(cmd); }
+  });
+  return el;
+}
+
+function selectText(node) { const r = document.createRange(); r.selectNodeContents(node); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+
+function render() {
+  const terms = norm(state.q).split(/[\s　]+/).filter(Boolean);
+  renderFilters(terms);
+  const hits = SKILLS.filter((s) => matches(s, terms));
+  const out = document.getElementById("results");
+  out.replaceChildren();
+  document.getElementById("clear").hidden = !state.q;
+  const filters = [state.cat, state.src].filter(Boolean).join("・");
+  document.getElementById("status").textContent =
+    `${hits.length} 件 / 全 ${SKILLS.length} 件` + (state.q ? `　「${state.q}」` : "") + (filters ? `　${filters}で絞り込み中` : "");
+  if (!hits.length) {
+    out.innerHTML = `<div class="empty">見つかりませんでした。<br>ちがう言葉（例：「表」「資料」「予定」）で探すか、絞り込みを解除してください。</div>`;
+    return;
+  }
+  CAT_ORDER.forEach((c) => {
+    const items = hits.filter((s) => s.category === c);
+    if (!items.length) return;
+    const sec = document.createElement("section");
+    sec.className = "group"; sec.style.setProperty("--cat", CAT_VAR[c]);
+    sec.innerHTML = `<h2><span class="dot"></span>${esc(c)}</h2>`;
+    const list = document.createElement("div"); list.className = "list";
+    items.forEach((s) => list.append(card(s, terms)));
+    sec.append(list); out.append(sec);
+  });
+}
+
+const q = document.getElementById("q");
+q.addEventListener("input", () => { state.q = q.value; render(); });
+document.getElementById("clear").addEventListener("click", () => { q.value = ""; state.q = ""; render(); q.focus(); });
+const hints = document.getElementById("hints");
+HINTS.forEach((w) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip hint"; b.textContent = w;
+  b.addEventListener("click", () => { q.value = w; state.q = w; render(); });
+  hints.append(b);
+});
+render();
+</script>
+
+</body>
+</html>
